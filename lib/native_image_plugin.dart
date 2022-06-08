@@ -1,9 +1,10 @@
 import 'dart:io';
-
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-
+import 'package:flutter/rendering.dart';
 import 'dart:async';
-
 import 'package:flutter/services.dart';
 
 class NativeImagePlugin {
@@ -16,10 +17,14 @@ class NativeImagePlugin {
 }
 
 class NativeImageView extends StatefulWidget {
-  final double width;
-  final double height;
+  final double? width;
+  final double? height;
   final String? url;
   final String? path;
+  final Uint8List? bytes;
+  final BoxFit? fit;
+  final Set<Factory<OneSequenceGestureRecognizer>>? gestureRecognizers;
+  final PlatformViewHitTestBehavior hitTestBehavior;
 
   const NativeImageView({
     Key? key,
@@ -27,6 +32,10 @@ class NativeImageView extends StatefulWidget {
     required this.height,
     this.url,
     this.path,
+    this.bytes,
+    this.fit,
+    this.gestureRecognizers,
+    this.hitTestBehavior = PlatformViewHitTestBehavior.opaque,
   }) : super(key: key);
 
   @override
@@ -49,19 +58,41 @@ class _NativeImageViewState extends State<NativeImageView> {
   @override
   Widget build(BuildContext context) {
     if (Platform.isIOS) {
-      return SizedBox(
-        width: widget.width,
-        height: widget.height,
-        child: UiKitView(
-          viewType: "NativeImagePlugin",
-          layoutDirection: TextDirection.ltr,
-          creationParams: {
-            'url': widget.url,
-            'path': widget.path,
-          },
-          creationParamsCodec: const StandardMessageCodec(),
-        ),
+      String fitString = "";
+      switch (widget.fit) {
+        case BoxFit.cover:
+          fitString = "cover";
+          break;
+        case BoxFit.fill:
+          fitString = "fill";
+          break;
+        case BoxFit.contain:
+          fitString = "contain";
+          break;
+      }
+      var _image = UiKitView(
+        // key: UniqueKey(),
+        viewType: "native_image_view",
+        layoutDirection: TextDirection.ltr,
+        hitTestBehavior: widget.hitTestBehavior,
+        gestureRecognizers: widget.gestureRecognizers,
+        creationParams: {
+          'url': widget.url,
+          'path': widget.path,
+          'data': widget.bytes,
+          'fit': fitString,
+        },
+        creationParamsCodec: const StandardMessageCodec(),
       );
+      if ((widget.width ?? widget.height) !=null) {
+        return SizedBox(
+          width: widget.width,
+          height: widget.height,
+          child: _image,
+        );
+      } else {
+        return _image;
+      }
     }
     return Container();
   }
